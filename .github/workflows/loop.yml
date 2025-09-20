@@ -34,14 +34,25 @@ jobs:
             ure \
             libreoffice-java-common \
             fonts-dejavu \
-            fonts-noto-core \
             poppler-utils \
             libpango-1.0-0 \
             libpangoft2-1.0-0 \
-            poppler-data libpoppler-dev
+            poppler-data \
+            libpoppler-dev \
+            wget \
+            fontconfig
           sudo apt-get purge -y libreoffice-help-* libreoffice-l10n-* libreoffice-dict-* || true
           sudo rm -rf /var/lib/apt/lists/*
-
+          
+      - name: Install SolaimanLipi font
+        run: |
+          sudo mkdir -p /usr/share/fonts/truetype/solaimanlipi
+          cd /tmp
+          wget -O "SolaimanLipi.ttf" "https://github.com/saiftheboss7/Solaimanlipi-version2/raw/master/SolaimanLipi(25-Apr-2012)CustomizedBy-Saif.ttf"
+          sudo mv "SolaimanLipi.ttf" /usr/share/fonts/truetype/solaimanlipi/
+          sudo fc-cache -fv
+          fc-list | grep -i solaiman || echo "SolaimanLipi font installation verification failed"
+          
       - name: Install Python dependencies and run remedics Bot
         run: |
           cd remedics
