@@ -44,14 +44,17 @@ jobs:
           sudo apt-get purge -y libreoffice-help-* libreoffice-l10n-* libreoffice-dict-* || true
           sudo rm -rf /var/lib/apt/lists/*
           
-      - name: Install SolaimanLipi font
+      - name: Install local fonts
         run: |
-          sudo mkdir -p /usr/share/fonts/truetype/solaimanlipi
-          cd /tmp
-          wget -O "SolaimanLipi.ttf" "https://github.com/saiftheboss7/Solaimanlipi-version2/raw/master/SolaimanLipi(25-Apr-2012)CustomizedBy-Saif.ttf"
-          sudo mv "SolaimanLipi.ttf" /usr/share/fonts/truetype/solaimanlipi/
+          # Copy all provided TTF fonts to system fonts directory
+          sudo mkdir -p /usr/share/fonts/truetype/custom
+          sudo cp -r truetype/*/*.ttf /usr/share/fonts/truetype/custom/
+
+          # Refresh font cache
           sudo fc-cache -fv
-          fc-list | grep -i solaiman || echo "SolaimanLipi font installation verification failed"
+
+          # Verify that the fonts are available
+          fc-list | grep -i -E "solaiman|kalpurush|sutonnymj|ador|cambria|times" || echo "⚠️ Some fonts not detected"
           
       - name: Install Python dependencies and run remedics Bot
         run: |
