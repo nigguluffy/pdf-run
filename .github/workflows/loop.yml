@@ -48,14 +48,12 @@ jobs:
         run: |
           # Copy all provided TTF fonts to system fonts directory
           sudo mkdir -p /usr/share/fonts/truetype/custom
-          sudo cp -r truetype/*/*.ttf /usr/share/fonts/truetype/custom/
-
+          sudo cp -r remedics/truetype/*/*.ttf /usr/share/fonts/truetype/custom/
           # Refresh font cache
           sudo fc-cache -fv
-
           # Verify that the fonts are available
           fc-list | grep -i -E "solaiman|kalpurush|sutonnymj|ador|cambria|times" || echo "⚠️ Some fonts not detected"
-          
+ 
       - name: Install Python dependencies and run remedics Bot
         run: |
           cd remedics
