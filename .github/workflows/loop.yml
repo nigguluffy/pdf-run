@@ -1,4 +1,4 @@
-name: CI for QuizBots with Enhanced Math Support - FIXED
+name: CI for QuizBots
 
 on:
   push:
@@ -13,7 +13,7 @@ env:
   
 jobs:
   quizbot1:
-    name: Remedics-Bot-Math-Fixed
+    name: Remedics-Bot
     runs-on: ubuntu-latest
     steps:
       - name: Clone The Remedics Bot Repo
@@ -26,404 +26,36 @@ jobs:
         timeout-minutes: 5
         continue-on-error: false
 
-      - name: Install System Dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libreoffice-writer \
             ure \
-            libreoffice-java-common \
+            fonts-dejavu \
             poppler-utils \
             libpango-1.0-0 \
             libpangoft2-1.0-0 \
             poppler-data \
             libpoppler-dev \
             wget \
-            fontconfig \
-            fontconfig-config \
-            libfontconfig1 \
-            libfontconfig1-dev \
-            unzip \
-            curl
-          
-          # Clean up to save space
+            fontconfig
           sudo apt-get purge -y libreoffice-help-* libreoffice-l10n-* libreoffice-dict-* || true
           sudo rm -rf /var/lib/apt/lists/*
-
-      - name: Install Math Fonts (Fixed Package List)
+      - name: Install local fonts
         run: |
-          # Accept Microsoft EULA automatically  
-          echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | sudo debconf-set-selections
-          
-          # Install Microsoft core fonts (includes Times New Roman, Arial, etc.)
-          sudo apt-get update
-          sudo apt-get install -y ttf-mscorefonts-installer
-          
-          # Install ONLY available math-specific font packages (removed problematic ones)
-          sudo apt-get install -y --no-install-recommends \
-            fonts-dejavu \
-            fonts-liberation \
-            fonts-liberation2 \
-            fonts-lmodern \
-            fonts-stix \
-            fonts-texgyre \
-            fonts-noto-core \
-            fonts-noto-ui-core
-            # Removed: xfonts-mathml ttf-lyx (not available in Ubuntu 22.04)
-          
-          # Create custom font directories
           sudo mkdir -p /usr/share/fonts/truetype/custom
-          sudo mkdir -p /usr/share/fonts/opentype/custom
-          
-          # Copy project fonts
-          sudo cp -r remedics/truetype/*/*.ttf /usr/share/fonts/truetype/custom/ || true
-          
-          # Download additional math fonts manually since packages are missing
-          echo "📥 Downloading additional math fonts..."
-          
-          # Download Computer Modern Unicode (excellent math font)
-          wget -q http://canopus.iacp.dvo.ru/~panov/cm-unicode/cmunrm.ttf -P /tmp/ || echo "CMU Roman download failed"
-          wget -q http://canopus.iacp.dvo.ru/~panov/cm-unicode/cmunti.ttf -P /tmp/ || echo "CMU Italic download failed"
-          wget -q http://canopus.iacp.dvo.ru/~panov/cm-unicode/cmunbx.ttf -P /tmp/ || echo "CMU Bold download failed"
-          sudo cp /tmp/cmun*.ttf /usr/share/fonts/truetype/custom/ 2>/dev/null || true
-          
-          # Download TeX Math fonts as alternatives
-          wget -q https://www.gust.org.pl/projects/e-foundry/tex-gyre/math/download/texgyretermes-math.otf -P /tmp/ || echo "TeX Gyre math download failed"
-          sudo cp /tmp/*.otf /usr/share/fonts/opentype/custom/ 2>/dev/null || true
-          
-          # Set proper permissions
-          sudo chmod 644 /usr/share/fonts/truetype/custom/* 2>/dev/null || true
-          sudo chmod 644 /usr/share/fonts/opentype/custom/* 2>/dev/null || true
-          
-          # Configure fontconfig for math compatibility
-          sudo tee /etc/fonts/local.conf << 'EOF'
-          <?xml version="1.0"?>
-          <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-          <fontconfig>
-              <alias>
-                  <family>Cambria Math</family>
-                  <prefer>
-                      <family>STIX Two Math</family>
-                      <family>Latin Modern Math</family>
-                      <family>CMU Serif</family>
-                      <family>TeX Gyre Termes Math</family>
-                      <family>DejaVu Sans</family>
-                  </prefer>
-              </alias>
-              <alias>
-                  <family>Times New Roman</family>
-                  <prefer>
-                      <family>Liberation Serif</family>
-                      <family>DejaVu Serif</family>
-                      <family>Times</family>
-                  </prefer>
-              </alias>
-              <alias>
-                  <family>Arial</family>
-                  <prefer>
-                      <family>Liberation Sans</family>
-                      <family>DejaVu Sans</family>
-                      <family>Arial</family>
-                  </prefer>
-              </alias>
-              <alias>
-                  <family>SolaimanLipi</family>
-                  <prefer>
-                      <family>SolaimanLipi</family>
-                      <family>DejaVu Sans</family>
-                      <family>Liberation Sans</family>
-                  </prefer>
-              </alias>
-          </fontconfig>
-          EOF
-          
-          # Refresh font cache (critical step)
+          sudo cp -r remedics/truetype/*/*.{ttf,ttc} /usr/share/fonts/truetype/custom/ || true
           sudo fc-cache -fv
-          sudo fc-cache -fs
-          
-          # Verify font installation
-          echo "=== Available Math Fonts ==="
-          fc-list | grep -i -E "stix|liberation|dejavu|times|arial|cambria|cmu|tex.*gyre" | head -8 || echo "⚠️ Some fonts not detected"
-          
-          echo "=== Project Fonts ==="
-          fc-list | grep -i -E "solaiman|kalpurush|sutonnymj|ador" | head -4 || echo "⚠️ Project fonts not detected"
-
-      - name: Create MML2OMML Stylesheet for Linux
-        run: |
-          # Create directory for MML2OMML stylesheet
-          sudo mkdir -p /usr/share/mathml2omml
-          
-          # Create the MML2OMML.XSL stylesheet (equivalent to Windows Office version)
-          sudo tee /usr/share/mathml2omml/MML2OMML.XSL << 'EOF'
-          <?xml version='1.0' encoding="UTF-8"?>
-          <xsl:stylesheet version="1.0" 
-                          xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
-                          xmlns:mml="http://www.w3.org/1998/Math/MathML" 
-                          xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
-          
-          <xsl:output method="xml" indent="no" encoding="UTF-8"/>
-          
-          <!-- Root math element -->
-          <xsl:template match="mml:math">
-              <m:oMath>
-                  <xsl:apply-templates select="*"/>
-              </m:oMath>
-          </xsl:template>
-          
-          <!-- Fraction -->
-          <xsl:template match="mml:mfrac">
-              <m:f>
-                  <m:fPr/>
-                  <m:num>
-                      <m:r>
-                          <xsl:apply-templates select="*[1]"/>
-                      </m:r>
-                  </m:num>
-                  <m:den>
-                      <m:r>
-                          <xsl:apply-templates select="*[2]"/>
-                      </m:r>
-                  </m:den>
-              </m:f>
-          </xsl:template>
-          
-          <!-- Square root -->
-          <xsl:template match="mml:msqrt">
-              <m:rad>
-                  <m:radPr/>
-                  <m:deg/>
-                  <m:e>
-                      <m:r>
-                          <xsl:apply-templates select="*"/>
-                      </m:r>
-                  </m:e>
-              </m:rad>
-          </xsl:template>
-          
-          <!-- Superscript -->
-          <xsl:template match="mml:msup">
-              <m:sSup>
-                  <m:sSupPr/>
-                  <m:e>
-                      <m:r>
-                          <xsl:apply-templates select="*[1]"/>
-                      </m:r>
-                  </m:e>
-                  <m:sup>
-                      <m:r>
-                          <xsl:apply-templates select="*[2]"/>
-                      </m:r>
-                  </m:sup>
-              </m:sSup>
-          </xsl:template>
-          
-          <!-- Subscript -->
-          <xsl:template match="mml:msub">
-              <m:sSub>
-                  <m:sSubPr/>
-                  <m:e>
-                      <m:r>
-                          <xsl:apply-templates select="*[1]"/>
-                      </m:r>
-                  </m:e>
-                  <m:sub>
-                      <m:r>
-                          <xsl:apply-templates select="*[2]"/>
-                      </m:r>
-                  </m:sub>
-              </m:sSub>
-          </xsl:template>
-          
-          <!-- Subscript and Superscript -->
-          <xsl:template match="mml:msubsup">
-              <m:sSubSup>
-                  <m:sSubSupPr/>
-                  <m:e>
-                      <m:r>
-                          <xsl:apply-templates select="*[1]"/>
-                      </m:r>
-                  </m:e>
-                  <m:sub>
-                      <m:r>
-                          <xsl:apply-templates select="*[2]"/>
-                      </m:r>
-                  </m:sub>
-                  <m:sup>
-                      <m:r>
-                          <xsl:apply-templates select="*[3]"/>
-                      </m:r>
-                  </m:sup>
-              </m:sSubSup>
-          </xsl:template>
-          
-          <!-- Multi-scripts (for isotopes) -->
-          <xsl:template match="mml:mmultiscripts">
-              <m:sSubSup>
-                  <m:sSubSupPr/>
-                  <m:e>
-                      <m:r>
-                          <xsl:apply-templates select="*[1]"/>
-                      </m:r>
-                  </m:e>
-                  <m:sub>
-                      <m:r>
-                          <xsl:apply-templates select="*[2]"/>
-                      </m:r>
-                  </m:sub>
-                  <m:sup>
-                      <m:r>
-                          <xsl:apply-templates select="*[4]"/>
-                      </m:r>
-                  </m:sup>
-              </m:sSubSup>
-          </xsl:template>
-          
-          <!-- Identifier -->
-          <xsl:template match="mml:mi">
-              <m:t>
-                  <xsl:value-of select="."/>
-              </m:t>
-          </xsl:template>
-          
-          <!-- Number -->
-          <xsl:template match="mml:mn">
-              <m:t>
-                  <xsl:value-of select="."/>
-              </m:t>
-          </xsl:template>
-          
-          <!-- Operator -->
-          <xsl:template match="mml:mo">
-              <m:t>
-                  <xsl:value-of select="."/>
-              </m:t>
-          </xsl:template>
-          
-          <!-- Text -->
-          <xsl:template match="mml:mtext">
-              <m:t>
-                  <xsl:value-of select="."/>
-              </m:t>
-          </xsl:template>
-          
-          <!-- Row -->
-          <xsl:template match="mml:mrow">
-              <xsl:apply-templates select="*"/>
-          </xsl:template>
-          
-          <!-- Handle none elements (placeholders) -->
-          <xsl:template match="mml:none"/>
-          
-          </xsl:stylesheet>
-          EOF
-          
-          # Set environment variable for Python code
-          echo "MML2OMML_STYLESHEET_PATH=/usr/share/mathml2omml/MML2OMML.XSL" >> $GITHUB_ENV
-          
-          # Verify stylesheet creation
-          if [ -f /usr/share/mathml2omml/MML2OMML.XSL ]; then
-              echo "✅ MML2OMML stylesheet created successfully"
-              ls -la /usr/share/mathml2omml/MML2OMML.XSL
-          else
-              echo "❌ Failed to create MML2OMML stylesheet"
-          fi
-
-      - name: Install Enhanced Python Dependencies
-        run: |
-          # Upgrade pip
-          pip install --upgrade pip
-          
-          # Install XML processing libraries first
-          pip install lxml html5lib requests
-          
-          # Install mathml2omml with multiple attempts and better error handling
-          echo "📦 Installing mathml2omml libraries..."
-          pip install mathml2omml || echo "⚠️ Primary mathml2omml failed"
-          pip install git+https://github.com/AlloteSoftware/mathml2omml_as.git || echo "⚠️ Alternative mathml2omml_as failed"
-          
-          # Verify installations
-          python3 -c "
-          print('=== Python Math Library Status ===')
-          try:
-              import mathml2omml_as
-              print('✅ mathml2omml_as available')
-          except ImportError:
-              try:
-                  import mathml2omml  
-                  print('✅ mathml2omml available')
-              except ImportError:
-                  print('⚠️ No mathml2omml - using text fallback (this is OK)')
-          
-          try:
-              from lxml import etree
-              print('✅ lxml available for XML processing')
-          except ImportError:
-              print('❌ lxml missing - this could cause issues')
-          
-          import os
-          stylesheet = os.environ.get('MML2OMML_STYLESHEET_PATH')
-          if stylesheet and os.path.exists(stylesheet):
-              print(f'✅ MML2OMML stylesheet: {stylesheet}')
-          else:
-              print('⚠️ MML2OMML stylesheet not found - will use library fallback')
-          "
-
-      - name: Test Math Processing Environment
-        run: |
-          cd remedics
-          python3 -c "
-          import platform
-          print(f'🖥️ Platform: {platform.system()} {platform.release()}')
-          
-          # Test simple MathML conversion
-          test_mathml = '<math xmlns=\"http://www.w3.org/1998/Math/MathML\"><mfrac><mn>1</mn><mn>2</mn></mfrac></math>'
-          print('🧪 Testing MathML processing...')
-          
-          # Test stylesheet method
-          import os
-          try:
-              from lxml import etree
-              stylesheet_path = os.environ.get('MML2OMML_STYLESHEET_PATH')
-              if stylesheet_path and os.path.exists(stylesheet_path):
-                  try:
-                      tree = etree.fromstring(test_mathml.encode('utf-8'))
-                      xslt = etree.parse(stylesheet_path)
-                      transform = etree.XSLT(xslt)
-                      result = transform(tree)
-                      if result and result.getroot() is not None:
-                          print('✅ MathML to OMML conversion test PASSED')
-                      else:
-                          print('⚠️ MathML conversion returned empty result')
-                  except Exception as e:
-                      print(f'⚠️ MathML conversion test failed: {e}')
-              else:
-                  print('⚠️ No stylesheet found - will use library/text fallback')
-          except ImportError:
-              print('⚠️ lxml not available - will use text fallback')
-          
-          # Test library method
-          try:
-              import mathml2omml_as
-              result = mathml2omml_as.convert(test_mathml)
-              if result:
-                  print('✅ mathml2omml_as library test PASSED')
-              else:
-                  print('⚠️ mathml2omml_as returned empty result')
-          except ImportError:
-              try:
-                  import mathml2omml
-                  result = mathml2omml.convert(test_mathml)
-                  if result:
-                      print('✅ mathml2omml library test PASSED')
-                  else:
-                      print('⚠️ mathml2omml returned empty result')
-              except ImportError:
-                  print('⚠️ No mathml2omml libraries - text fallback will be used')
-          
-          print('🚀 Environment setup complete - math processing ready!')
-          "
-
-      - name: Install Project Dependencies and Run Bot
+          fc-list > fonts.log
+          cat fonts.log | grep -i -E "solaiman|kalpurush|sutonnymj|ador|cambria|times|cambriamath" || echo "⚠️ Some fonts not detected"
+      - name: Upload font log for debugging
+        uses: actions/upload-artifact@v4
+        with:
+          name: font-list
+          path: fonts.log
+ 
+      - name: Install Python dependencies and run remedics Bot
         run: |
           cd remedics
           pip install -r requirements.txt
@@ -431,8 +63,9 @@ jobs:
         timeout-minutes: 340
         continue-on-error: true
 
+
   looper:
-    name: Run QuizBot Loop  
+    name: Run QuizBot loop
     needs: quizbot1
     runs-on: ubuntu-latest
     steps:
@@ -447,29 +80,13 @@ jobs:
           git config --global credential.helper store
           echo "https://${{ env.username }}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
 
-      - name: Notify Telegram (Math Support Fixed)
+      - name: Notify Telegram (Restart in 5 minutes, BD Time)
         run: |
           TZ="Asia/Dhaka"
           CURRENT_TIME=$(TZ=$TZ date +"%Y-%m-%d %H:%M:%S")
           END_TIME=$(TZ=$TZ date -d "+345 minutes" +"%Y-%m-%d %H:%M:%S")
           
-          MESSAGE="✅ FIXED workflow with working math support!
-          
-          🔧 Font Issues Resolved:
-          • Removed problematic packages (xfonts-mathml, ttf-lyx)
-          • Added manual font downloads as alternatives
-          • Enhanced fallback mechanisms
-          • Better error handling
-          
-          📊 Math Processing:
-          • MML2OMML stylesheet ✅
-          • Multiple math libraries ✅
-          • Text fallback ready ✅
-          • Cross-platform compatibility ✅
-          
-          🕒 Current time (BD): $CURRENT_TIME
-          ⏳ Next restart: $END_TIME
-          📄 Math equations should now work properly!"
+          MESSAGE="✅ Workflow complete. Bot is restarting in 5 minutes.\n\n🕒 Current time (BD): $CURRENT_TIME\n⏳ It will keep running until: $END_TIME"
           
           curl -X POST \
             "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
@@ -477,9 +94,9 @@ jobs:
             -d parse_mode=HTML \
             -d text="$MESSAGE"
 
-      - name: Create Empty Commit for Loop
+      - name: Create an empty commit
         run: |
           git clone https://${{ secrets.GH_TOKEN }}@github.com/${GITHUB_REPOSITORY} temp
           cd temp
-          git commit --allow-empty -m "[LOOP] Fixed math support workflow restart"
+          git commit --allow-empty -m "[LOOP] Re-run XenonCI workflow"
           git push
