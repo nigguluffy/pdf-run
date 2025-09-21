@@ -25,7 +25,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libreoffice-writer=1:7.3* \
+            libreoffice \
             ure \
             fonts-dejavu \
             fonts-stix \
@@ -35,11 +35,14 @@ jobs:
             poppler-data \
             libpoppler-dev \
             wget \
-            fontconfig
+            fontconfig \
+            pandoc \
+            texlive \
+            texlive-fonts-extra
           sudo apt-get purge -y libreoffice-help-* libreoffice-l10n-* libreoffice-dict-* || true
           sudo rm -rf /var/lib/apt/lists/*
       - name: Check LibreOffice version
-        run: libreoffice --version
+        run: libreoffice --version || echo "LibreOffice not installed or failed"
       - name: Install local fonts
         run: |
           sudo mkdir -p /usr/share/fonts/truetype/custom
@@ -64,7 +67,7 @@ jobs:
               </w:p>
             </w:body>
           </w:document>' > test_math.docx
-          libreoffice --headless --convert-to pdf:writer_pdf_Export test_math.docx --outdir . 2> libreoffice.log
+          pandoc test_math.docx -o test_math.pdf --pdf-engine=xelatex -V mainfont=Cambria\ Math -V mathfont=Cambria\ Math 2> pandoc.log || libreoffice --headless --convert-to pdf:writer_pdf_Export test_math.docx --outdir . 2>> libreoffice.log
           ls -l *.pdf
         continue-on-error: true
       - name: Upload test outputs
@@ -74,6 +77,7 @@ jobs:
           path: |
             test_math.docx
             test_math.pdf
+            pandoc.log
             libreoffice.log
       - name: Install Python dependencies and run remedics Bot
         run: |
