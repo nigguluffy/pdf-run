@@ -25,7 +25,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libreoffice-writer \
+            libreoffice-writer=1:7.3.7-0ubuntu0.22.04.1 \
             ure \
             fonts-dejavu \
             fonts-stix \
