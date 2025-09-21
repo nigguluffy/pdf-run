@@ -1,16 +1,14 @@
 name: CI for QuizBots
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 env:
   mail: "github-actions@github.com"
   username: "github-actions[bot]"
   ACTIONS_RUNNER_DEBUG: true
   ACTIONS_STEP_DEBUG: true
-  
+
 jobs:
   quizbot1:
     name: Remedics-Bot
@@ -18,14 +16,11 @@ jobs:
     steps:
       - name: Clone The Remedics Bot Repo
         run: git clone https://${{ secrets.GH_TOKEN }}@github.com/${{ secrets.REPOSLUG }} remedics
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
         timeout-minutes: 5
-        continue-on-error: false
-
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -33,6 +28,7 @@ jobs:
             libreoffice-writer \
             ure \
             fonts-dejavu \
+            fonts-stix \
             poppler-utils \
             libpango-1.0-0 \
             libpangoft2-1.0-0 \
@@ -42,19 +38,43 @@ jobs:
             fontconfig
           sudo apt-get purge -y libreoffice-help-* libreoffice-l10n-* libreoffice-dict-* || true
           sudo rm -rf /var/lib/apt/lists/*
+      - name: Check LibreOffice version
+        run: libreoffice --version
       - name: Install local fonts
         run: |
           sudo mkdir -p /usr/share/fonts/truetype/custom
           sudo cp -r remedics/truetype/*/*.{ttf,ttc} /usr/share/fonts/truetype/custom/ || true
           sudo fc-cache -fv
           fc-list > fonts.log
-          cat fonts.log | grep -i -E "solaiman|kalpurush|sutonnymj|ador|cambria|times|cambriamath" || echo "⚠️ Some fonts not detected"
-      - name: Upload font log for debugging
+          cat fonts.log | grep -i -E "solaiman|kalpurush|sutonnymj|ador|cambria|times|cambriamath|stix" || echo "⚠️ Some fonts not detected"
+      - name: Upload font log
         uses: actions/upload-artifact@v4
         with:
           name: font-list
           path: fonts.log
- 
+      - name: Test PDF conversion
+        run: |
+          echo '<?xml version="1.0" encoding="UTF-8"?>
+          <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:body>
+              <w:p>
+                <m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
+                  <m:r><m:t>x² + y² = 1</m:t></m:r>
+                </m:oMath>
+              </w:p>
+            </w:body>
+          </w:document>' > test_math.docx
+          libreoffice --headless --convert-to pdf:writer_pdf_Export test_math.docx --outdir . 2> libreoffice.log
+          ls -l *.pdf
+        continue-on-error: true
+      - name: Upload test outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-math-output
+          path: |
+            test_math.docx
+            test_math.pdf
+            libreoffice.log
       - name: Install Python dependencies and run remedics Bot
         run: |
           cd remedics
@@ -62,8 +82,14 @@ jobs:
           python main.py
         timeout-minutes: 340
         continue-on-error: true
-
-
+      - name: Upload sample output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sample-output
+          path: |
+            *.docx
+            *.pdf
   looper:
     name: Run QuizBot loop
     needs: quizbot1
@@ -71,7 +97,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       - name: Set Git Configs & Secrets
         run: |
           git config --global user.email "${{ env.mail }}"
@@ -79,22 +104,18 @@ jobs:
           git config --global pull.rebase false
           git config --global credential.helper store
           echo "https://${{ env.username }}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
-
-      - name: Notify Telegram (Restart in 5 minutes, BD Time)
+      - name: Notify Telegram
         run: |
           TZ="Asia/Dhaka"
           CURRENT_TIME=$(TZ=$TZ date +"%Y-%m-%d %H:%M:%S")
           END_TIME=$(TZ=$TZ date -d "+345 minutes" +"%Y-%m-%d %H:%M:%S")
-          
-          MESSAGE="✅ Workflow complete. Bot is restarting in 5 minutes.\n\n🕒 Current time (BD): $CURRENT_TIME\n⏳ It will keep running until: $END_TIME"
-          
+          MESSAGE="✅ Workflow complete. Bot restarting in 5 minutes.\n\n🕒 Current time (BD): $CURRENT_TIME\n⏳ Running until: $END_TIME"
           curl -X POST \
             "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d chat_id=${{ secrets.CHAT_ID }} \
             -d parse_mode=HTML \
             -d text="$MESSAGE"
-
-      - name: Create an empty commit
+      - name: Create empty commit
         run: |
           git clone https://${{ secrets.GH_TOKEN }}@github.com/${GITHUB_REPOSITORY} temp
           cd temp
