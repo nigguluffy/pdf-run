@@ -52,7 +52,7 @@ jobs:
         run: |
           # Copy all provided TTF fonts to system fonts directory
           sudo mkdir -p /usr/share/fonts/truetype/custom
-          sudo cp -r pdf-bot/fonts/*/*.ttf /usr/share/fonts/truetype/custom/
+          sudo cp -r pdf-bot/fonts/*.ttf /usr/share/fonts/truetype/custom/
           # Refresh font cache
           sudo fc-cache -fv
           # Verify that the fonts are available
