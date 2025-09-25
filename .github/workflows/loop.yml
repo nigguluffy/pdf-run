@@ -13,7 +13,7 @@ env:
   
 jobs:
   pdf-bot:
-    name: PDF-Converter-Bot
+    name: PDF-Converter-Bott
     runs-on: ubuntu-latest
     steps:
       - name: Clone The PDF Bot Repo
